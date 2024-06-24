@@ -74,4 +74,19 @@ program
     }
   });
 
+program
+  .command('sas')
+  .description('Generate a SAS token')
+  .action(async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/sas`);
+      console.log(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Error generating SAS token:', error.message);
+      } else {
+        console.error('Unexpected error:', error);
+      }
+    }
+  });
 program.parse(process.argv);

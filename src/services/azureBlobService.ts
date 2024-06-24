@@ -35,3 +35,16 @@ export const generateSasToken = (containerName: string): Promise<string> => {
 
   return sasToken;
 };
+
+export const generateSasTokenForBlob = (containerName: string, blobName: string): Promise<string> => {
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blobClient = containerClient.getBlobClient(blobName);
+
+  const sasToken = blobClient.generateSasUrl({
+    permissions: ContainerSASPermissions.parse('r'),
+    startsOn: new Date(new Date().valueOf() - 86400),
+    expiresOn: new Date(new Date().valueOf() + 86400)
+  });
+
+  return sasToken;
+}

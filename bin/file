@@ -12,6 +12,7 @@ usage() {
   echo "  get <id>                     Get a file by ID"
   echo "  delete <id>                  Delete a file by ID"
   echo "  sync                         Sync files from Azure Blob Storage to the database"
+  echo "  sas                          Generate a SAS token for an Azure Blob Storage container"
 }
 
 # Ensure at least one argument is provided
@@ -45,8 +46,12 @@ case "$COMMAND" in
   sync)
     npx ts-node "$CLI_PATH" sync
     ;;
+  sas)
+    npx ts-node "$CLI_PATH" sas
+    ;;
   *)
     usage
     exit 1
     ;;
+
 esac

@@ -5,6 +5,7 @@ import { File } from '../Entity/File';
 import dotenv from 'dotenv';
 import * as path from 'path';
 import { FileTypeGuesser } from '../helpers/FileTypeGuesser';
+import { generateSasTokenForBlob } from '../services/azureBlobService';
 
 const router = Router();
 dotenv.config();
@@ -15,7 +16,14 @@ const AZURE_STORAGE_CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME ||
 router.get('/files', async (req, res) => {
   try {
     const fileRepository = AppDataSource.getRepository(File);
-    const files = await fileRepository.find();
+    let files = await fileRepository.find();
+
+    // Use Promise.all to handle the asynchronous map operation
+    files = await Promise.all(files.map(async (file) => {
+      file.url = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, file.path);
+      return file;
+    }));
+
     res.json(files);
   } catch (error) {
     console.error('Error fetching files from the database:', error);
