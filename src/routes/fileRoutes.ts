@@ -4,6 +4,7 @@ import { AppDataSource } from '../dataSource';
 import { File } from '../Entity/File';
 import dotenv from 'dotenv';
 import * as path from 'path';
+import { FileTypeGuesser } from '../helpers/FileTypeGuesser';
 
 const router = Router();
 dotenv.config();
@@ -43,15 +44,12 @@ router.get('/files/:id', async (req, res) => {
 router.post('/sync', async (req, res) => {
   try {
     const fileRepository = AppDataSource.getRepository(File);
-    const blobFiles = await listFilesInContainer(AZURE_STORAGE_CONTAINER_NAME);
+    const blobItems = await listFilesInContainer(AZURE_STORAGE_CONTAINER_NAME);
 
     const fileEntities = [];
 
-    for (const blobPath of blobFiles) {
-      if (!blobPath) {
-        console.error('Invalid blobPath:', blobPath);
-        continue;
-      }
+    for (const blob of blobItems) {
+      const blobPath = blob.name;
       const url = `https://${process.env.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER_NAME}/${blobPath}`;
       const date = new Date().toISOString();
 
@@ -62,7 +60,8 @@ router.post('/sync', async (req, res) => {
         file.name = path.basename(blobPath); // Extract file name from the path
         file.url = url;
         file.path = blobPath;
-
+        file.size = blob.properties.contentLength;
+        file.type = FileTypeGuesser.guessType(file.name);
         fileEntities.push(file);
       }
     }
@@ -79,7 +78,7 @@ router.post('/sync', async (req, res) => {
 });
 
 // Delete a file by id - Note: This assumes files are deleted via some other mechanism
-router.delete('/api/files/:id', (req, res) => {
+router.delete('/files/:id', (req, res) => {
   res.status(501).send('Not Implemented');
 });
 

@@ -25,6 +25,9 @@ export class File {
   @Column()
   path: string;
 
+  @Column({ nullable: true })
+  size?: number;
+
   constructor() {
     this.id = uuidv4();
     this.date = new Date().toISOString();
@@ -33,6 +36,7 @@ export class File {
     this.type = 'unknown';
     this.url = '';
     this.name = '';
+    this.size = 0;
   }
 
 }
