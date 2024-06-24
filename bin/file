@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Path to your TypeScript CLI script
+CLI_PATH="./src/cli.ts"
+
+# Function to show usage
+usage() {
+  echo "Usage: $0 {list|get|create|update|delete} [options]"
+  echo
+  echo "Commands:"
+  echo "  list                         List all files"
+  echo "  get <id>                     Get a file by ID"
+  echo "  create --name <name> --url <url> --type <type> --date <date> [--thumbnail <thumbnail>]"
+  echo "                               Create a new file"
+  echo "  update <id> --name <name> --url <url> --type <type> --date <date> [--thumbnail <thumbnail>]"
+  echo "                               Update a file by ID"
+  echo "  delete <id>                  Delete a file by ID"
+}
+
+# Ensure at least one argument is provided
+if [ "$#" -lt 1 ]; then
+  usage
+  exit 1
+fi
+
+COMMAND=$1
+shift
+
+# Run the TypeScript CLI with the provided arguments
+case "$COMMAND" in
+  list)
+    npx ts-node "$CLI_PATH" list
+    ;;
+  get)
+    if [ "$#" -ne 1 ]; then
+      usage
+      exit 1
+    fi
+    npx ts-node "$CLI_PATH" get "$@"
+    ;;
+  create)
+    npx ts-node "$CLI_PATH" create "$@"
+    ;;
+  update)
+    if [ "$#" -lt 5 ]; then
+      usage
+      exit 1
+    fi
+    npx ts-node "$CLI_PATH" update "$@"
+    ;;
+  delete)
+    if [ "$#" -ne 1 ]; then
+      usage
+      exit 1
+    fi
+    npx ts-node "$CLI_PATH" delete "$@"
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac
