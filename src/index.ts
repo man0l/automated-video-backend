@@ -5,6 +5,7 @@ import bodyParser from 'body-parser';
 import fileRoutes from './routes/fileRoutes';
 import dotenv from 'dotenv';
 import { AbortController } from 'abort-controller';
+import cors from 'cors';
 
 (global as any).AbortController = AbortController;
 
@@ -15,7 +16,7 @@ AppDataSource.initialize().then(async () => {
   const port = 3000;
 
   app.use(bodyParser.json());
-
+  app.use(cors());
   app.use('/api', fileRoutes);
 
   app.listen(port, () => {
