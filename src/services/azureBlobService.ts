@@ -1,4 +1,4 @@
-import { BlobItem, BlobServiceClient, StorageSharedKeyCredential } from '@azure/storage-blob';
+import { BlobItem, BlobServiceClient, ContainerSASPermissions, StorageSharedKeyCredential } from '@azure/storage-blob';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -28,7 +28,7 @@ export const generateSasToken = (containerName: string): Promise<string> => {
   const containerClient = blobServiceClient.getContainerClient(containerName);
 
   const sasToken = containerClient.generateSasUrl({
-    permissions: 'r',
+    permissions: ContainerSASPermissions.parse('r'),
     startsOn: new Date(new Date().valueOf() - 86400),
     expiresOn: new Date(new Date().valueOf() + 86400)
   });
