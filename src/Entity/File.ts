@@ -21,11 +21,11 @@ export class File {
   @Column({ nullable: true })
   thumbnail?: string; // Marked as optional
 
-  constructor(name: string, url: string, type: string, date: string, thumbnail?: string) {
+  constructor(name: string, url: string, myType: string, date: string, thumbnail?: string) {
     this.id = uuidv4(); // Initialize the ID with a UUID
     this.name = name;
     this.url = url;
-    this.type = type;
+    this.type = myType;
     this.date = date;
     if (thumbnail) {
       this.thumbnail = thumbnail;

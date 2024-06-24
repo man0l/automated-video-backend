@@ -4,6 +4,9 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import fileRoutes from './routes/fileRoutes';
 import dotenv from 'dotenv';
+import { AbortController } from 'abort-controller';
+
+(global as any).AbortController = AbortController;
 
 dotenv.config(); // Load environment variables from .env file
 
