@@ -1,8 +1,9 @@
 import { Router } from 'express';
+import { listFilesInContainer } from '../services/azureBlobService';
 import { AppDataSource } from '../dataSource';
 import { File } from '../Entity/File';
-import { listFilesInContainer } from '../services/azureBlobService';
 import dotenv from 'dotenv';
+import * as path from 'path';
 
 const router = Router();
 dotenv.config();
@@ -46,14 +47,22 @@ router.post('/sync', async (req, res) => {
 
     const fileEntities = [];
 
-    for (const blobName of blobFiles) {
-      const url = `https://${process.env.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER_NAME}/${blobName}`;
+    for (const blobPath of blobFiles) {
+      if (!blobPath) {
+        console.error('Invalid blobPath:', blobPath);
+        continue;
+      }
+      const url = `https://${process.env.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER_NAME}/${blobPath}`;
       const date = new Date().toISOString();
 
       // Check if the file already exists in the database
-      const existingFile = await fileRepository.findOneBy({ name: blobName });
+      const existingFile = await fileRepository.findOneBy({ path: blobPath });
       if (!existingFile) {
-        const file = new File(blobName, url, 'unknown', date);
+        const file = new File();
+        file.name = path.basename(blobPath); // Extract file name from the path
+        file.url = url;
+        file.path = blobPath;
+
         fileEntities.push(file);
       }
     }
@@ -70,7 +79,7 @@ router.post('/sync', async (req, res) => {
 });
 
 // Delete a file by id - Note: This assumes files are deleted via some other mechanism
-router.delete('/files/:id', (req, res) => {
+router.delete('/api/files/:id', (req, res) => {
   res.status(501).send('Not Implemented');
 });
 

@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
+import * as path from 'path';
 
 @Entity()
 export class File {
@@ -19,16 +20,19 @@ export class File {
   date: string;
 
   @Column({ nullable: true })
-  thumbnail?: string; // Marked as optional
+  thumbnail?: string;
 
-  constructor(name: string, url: string, myType: string, date: string, thumbnail?: string) {
-    this.id = uuidv4(); // Initialize the ID with a UUID
-    this.name = name;
-    this.url = url;
-    this.type = myType;
-    this.date = date;
-    if (thumbnail) {
-      this.thumbnail = thumbnail;
-    }
+  @Column()
+  path: string;
+
+  constructor() {
+    this.id = uuidv4();
+    this.date = new Date().toISOString();
+    this.thumbnail = undefined;
+    this.path = '';
+    this.type = 'unknown';
+    this.url = '';
+    this.name = '';
   }
+
 }
