@@ -6,12 +6,14 @@ import dotenv from 'dotenv';
 import * as path from 'path';
 import { FileTypeGuesser } from '../helpers/FileTypeGuesser';
 import { generateSasTokenForBlob } from '../services/azureBlobService';
+import { scheduleJob } from '../services/azureBatchService';
 import { In } from 'typeorm/find-options/operator/In';
 
 const router = Router();
 dotenv.config();
 
 const AZURE_STORAGE_CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'azure-blob-container';
+const AZURE_STORAGE_PYTHON_SCRIPT_PATH = "sync_audio.py";
 
 router.get('/files', async (req, res) => {
   try {
@@ -127,18 +129,49 @@ router.post('/sync', async (req, res) => {
 router.post('/merge', async (req, res) => {
   const fileIds = req.body.fileIds;
   try {
-    const fileRepository = AppDataSource.getRepository(File);
-    const files = await fileRepository.find({ where: { id: In(fileIds) } });
-    if (files.length < 2) {
-      res.status(400).send('At least two files are required to merge');
-      return;
-    }
+      const fileRepository = AppDataSource.getRepository(File);
+      const files = await fileRepository.find({ where: { id: In(fileIds) } });
+      if (files.length < 2) {
+          res.status(400).send('At least two files are required to merge');
+          return;
+      }
 
+      const resourceFiles = await Promise.all(files.map(async file => {
+          const sasToken = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, file.path);
+          const fileExtension = FileTypeGuesser.getExtension(file.name);
+          let newFilePath;
+          
+          switch (file.type) {
+              case 'video':
+                  newFilePath = 'video.';
+                  break;
+              case 'audio':
+                  newFilePath = 'audio.';
+                  break;
+              default:
+                  throw new Error('Unsupported file type');
+          }
 
-    res.json({ message: 'Files scheduled for merging' });
+          newFilePath += fileExtension;
+
+          return {
+              httpUrl: sasToken,
+              filePath: newFilePath
+          };
+      }));
+
+      const pythonSasUrl = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, AZURE_STORAGE_PYTHON_SCRIPT_PATH);
+
+      resourceFiles.push({
+        httpUrl: pythonSasUrl,
+        filePath: AZURE_STORAGE_PYTHON_SCRIPT_PATH
+      });
+
+      const jobDetails = await scheduleJob(resourceFiles);
+      res.json({ message: 'Files scheduled for merging', jobDetails });
   } catch (error) {
-    console.error('Error merging files:', error);
-    res.status(500).send('Error merging files');
+      console.error('Error merging files:', error);
+      res.status(500).send('Error merging files');
   }
 });
 
