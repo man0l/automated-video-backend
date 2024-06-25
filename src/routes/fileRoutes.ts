@@ -123,6 +123,24 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+router.post('/merge', async (req, res) => {
+  const fileIds = req.body.fileIds;
+  try {
+    const fileRepository = AppDataSource.getRepository(File);
+    const files = await fileRepository.findByIds(fileIds);
+    if (files.length < 2) {
+      res.status(400).send('At least two files are required to merge');
+      return;
+    }
+
+
+    res.json({ message: 'Files scheduled for merging' });
+  } catch (error) {
+    console.error('Error merging files:', error);
+    res.status(500).send('Error merging files');
+  }
+});
+
 // Delete a file by id - Note: This assumes files are deleted via some other mechanism
 router.delete('/files/:id', (req, res) => {
   res.status(501).send('Not Implemented');
