@@ -28,6 +28,9 @@ export class File {
   @Column({ nullable: true })
   size?: number;
 
+  @Column({ default: false })
+  locked: boolean;
+
   constructor() {
     this.id = uuidv4();
     this.date = new Date().toISOString();
@@ -37,6 +40,7 @@ export class File {
     this.url = '';
     this.name = '';
     this.size = 0;
+    this.locked = false;
   }
 
 }
