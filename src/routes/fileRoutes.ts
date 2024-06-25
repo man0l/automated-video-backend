@@ -12,24 +12,62 @@ dotenv.config();
 
 const AZURE_STORAGE_CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'azure-blob-container';
 
-// Get all files
 router.get('/files', async (req, res) => {
   try {
     const fileRepository = AppDataSource.getRepository(File);
-    let files = await fileRepository.find();
+
+    // Extract and parse query parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const itemsPerPage = parseInt(req.query.itemsPerPage as string) || 5;
+    const type = req.query.type as string;
+    const search = req.query.search as string;
+    const fromDate = req.query.fromDate as string;
+    const toDate = req.query.toDate as string;
+
+    // Build query with pagination, filtering, and search
+    let query = fileRepository.createQueryBuilder('file');
+
+    if (type) {
+      query = query.andWhere('file.type = :type', { type });
+    }
+
+    if (search) {
+      query = query.andWhere('file.name LIKE :search', { search: `%${search}%` });
+    }
+
+    if (fromDate) {
+      const fromDateTime = new Date(fromDate);
+      fromDateTime.setHours(0, 0, 0, 0); // Set to the start of the day
+      query = query.andWhere('file.date >= :fromDate', { fromDate: fromDateTime.toISOString() });
+    }
+
+    if (toDate) {
+      const toDateTime = new Date(toDate);
+      toDateTime.setHours(23, 59, 59, 999); // Set to the end of the day
+      query = query.andWhere('file.date <= :toDate', { toDate: toDateTime.toISOString() });
+    }
+
+    const totalItems = await query.getCount();
+    const files = await query
+      .skip((page - 1) * itemsPerPage)
+      .take(itemsPerPage)
+      .getMany();
 
     // Use Promise.all to handle the asynchronous map operation
-    files = await Promise.all(files.map(async (file) => {
-      file.url = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, file.path);
-      return file;
-    }));
+    const filesWithSasUrl = await Promise.all(
+      files.map(async (file) => {
+        file.url = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, file.path);
+        return file;
+      })
+    );
 
-    res.json(files);
+    res.json({ files: filesWithSasUrl, totalItems });
   } catch (error) {
     console.error('Error fetching files from the database:', error);
     res.status(500).send('Error fetching files from the database');
   }
 });
+
 
 // Get a file by id
 router.get('/files/:id', async (req, res) => {
