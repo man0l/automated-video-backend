@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import * as path from 'path';
 import { FileTypeGuesser } from '../helpers/FileTypeGuesser';
 import { generateSasTokenForBlob } from '../services/azureBlobService';
+import { In } from 'typeorm/find-options/operator/In';
 
 const router = Router();
 dotenv.config();
@@ -127,7 +128,7 @@ router.post('/merge', async (req, res) => {
   const fileIds = req.body.fileIds;
   try {
     const fileRepository = AppDataSource.getRepository(File);
-    const files = await fileRepository.findByIds(fileIds);
+    const files = await fileRepository.find({ where: { id: In(fileIds) } });
     if (files.length < 2) {
       res.status(400).send('At least two files are required to merge');
       return;
