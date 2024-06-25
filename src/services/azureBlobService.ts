@@ -24,11 +24,11 @@ export const listFilesInContainer = async (containerName: string): Promise<BlobI
 };
 
 
-export const generateSasToken = (containerName: string): Promise<string> => {
+export const generateSasToken = (containerName: string, permissions: string = 'r'): Promise<string> => {
   const containerClient = blobServiceClient.getContainerClient(containerName);
 
   const sasToken = containerClient.generateSasUrl({
-    permissions: ContainerSASPermissions.parse('r'),
+    permissions: ContainerSASPermissions.parse(permissions),
     startsOn: new Date(new Date().valueOf() - 86400),
     expiresOn: new Date(new Date().valueOf() + 86400)
   });
@@ -36,12 +36,12 @@ export const generateSasToken = (containerName: string): Promise<string> => {
   return sasToken;
 };
 
-export const generateSasTokenForBlob = (containerName: string, blobName: string): Promise<string> => {
+export const generateSasTokenForBlob = (containerName: string, blobName: string, permissions= 'r'): Promise<string> => {
   const containerClient = blobServiceClient.getContainerClient(containerName);
   const blobClient = containerClient.getBlobClient(blobName);
 
   const sasToken = blobClient.generateSasUrl({
-    permissions: ContainerSASPermissions.parse('r'),
+    permissions: ContainerSASPermissions.parse(permissions),
     startsOn: new Date(new Date().valueOf() - 86400),
     expiresOn: new Date(new Date().valueOf() + 86400)
   });
