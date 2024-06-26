@@ -117,7 +117,6 @@ router.post('/sync', async (req, res) => {
       // Ensure that the blob path contains more than one segment to be considered a directory
       const pathSegments = blobPath.split('/');
       if (pathSegments.length < 2) {
-        console.warn(`No valid directory found for blob: ${blobPath}`);
         continue;
       }
       
