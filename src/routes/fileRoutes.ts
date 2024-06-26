@@ -8,6 +8,8 @@ import { FileTypeGuesser } from '../helpers/FileTypeGuesser';
 import { generateSasTokenForBlob } from '../services/azureBlobService';
 import { scheduleJob } from '../services/azureBatchService';
 import { In } from 'typeorm/find-options/operator/In';
+import { Project } from '../Entity/Project';
+import { validate as isUUID } from 'uuid';
 
 const router = Router();
 dotenv.config();
@@ -28,7 +30,9 @@ router.get('/files', async (req, res) => {
     const toDate = req.query.toDate as string;
 
     // Build query with pagination, filtering, and search
-    let query = fileRepository.createQueryBuilder('file');
+    let query = fileRepository.createQueryBuilder('file')
+      .leftJoinAndSelect('file.project', 'project'); // Include the Project relation
+
 
     if (type) {
       query = query.andWhere('file.type = :type', { type });
@@ -90,17 +94,39 @@ router.get('/files/:id', async (req, res) => {
 });
 
 // Sync files from Azure Blob Storage to the database
+// Sync files from Azure Blob Storage to the database
 router.post('/sync', async (req, res) => {
   try {
     const fileRepository = AppDataSource.getRepository(File);
+    const projectRepository = AppDataSource.getRepository(Project);
     const blobItems = await listFilesInContainer(AZURE_STORAGE_CONTAINER_NAME);
 
     const fileEntities = [];
+    const projectEntities = [];
 
     for (const blob of blobItems) {
       const blobPath = blob.name;
       const url = `https://${process.env.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER_NAME}/${blobPath}`;
       const date = new Date().toISOString();
+
+      // Ensure that the blob path contains more than one segment to be considered a directory
+      const pathSegments = blobPath.split('/');
+      if (pathSegments.length < 2) {
+        console.warn(`No valid directory found for blob: ${blobPath}`);
+        continue;
+      }
+      
+      const baseDirectory = pathSegments[0];
+
+      // Check if the project already exists in the database
+      let project = await projectRepository.findOneBy({ name: baseDirectory });
+      if (!project && baseDirectory !== AZURE_STORAGE_CONTAINER_NAME) {
+        project = new Project();
+        project.name = baseDirectory;
+        project.color = '#000000'; // Default color or generate dynamically if needed
+        await projectRepository.save(project);
+        projectEntities.push(project);
+      }
 
       // Check if the file already exists in the database
       const existingFile = await fileRepository.findOneBy({ path: blobPath });
@@ -111,6 +137,7 @@ router.post('/sync', async (req, res) => {
         file.path = blobPath;
         file.size = blob.properties.contentLength;
         file.type = FileTypeGuesser.guessType(file.name);
+        file.project = project || undefined; // Associate the file with the project
         fileEntities.push(file);
       }
     }
@@ -119,7 +146,7 @@ router.post('/sync', async (req, res) => {
       await fileRepository.save(fileEntities);
     }
 
-    res.json({ message: 'Sync complete', files: fileEntities });
+    res.json({ message: 'Sync complete', files: fileEntities, projects: projectEntities });
   } catch (error) {
     console.error('Error syncing files:', error);
     res.status(500).send('Error syncing files');
@@ -175,9 +202,35 @@ router.post('/merge', async (req, res) => {
   }
 });
 
-// Delete a file by id - Note: This assumes files are deleted via some other mechanism
-router.delete('/files/:id', (req, res) => {
-  res.status(501).send('Not Implemented');
+
+router.post('/files/updateProject', async (req, res) => {
+  const fileIds = req.body.fileIds;
+  const projectId = req.body.projectId;
+
+  try {
+    if (!isUUID(projectId)) {
+      return res.status(400).json({ message: 'Invalid project ID format' });
+    }
+
+    const fileRepository = AppDataSource.getRepository(File);
+    
+    // Ensure the project exists before updating files
+    const project = await AppDataSource.getRepository(Project).findOneBy({ id: projectId });
+    
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    await fileRepository.update(
+      { id: In(fileIds) },
+      { project: project } // Correctly referencing the project relation
+    );
+    
+    res.json({ message: 'Project updated' });
+  } catch (error) {
+    console.error('Error updating project:', error);
+    res.status(500).send('Error updating project');
+  }
 });
 
 export default router;
