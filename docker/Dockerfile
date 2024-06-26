@@ -1,6 +1,9 @@
 # Use an official Node.js runtime as a parent image
 FROM node:14
 
+RUN apt-get update && apt-get install -y \
+    netcat \
+    && rm -rf /var/lib/apt/lists/*
 # Set the working directory
 WORKDIR /usr/src/app
 

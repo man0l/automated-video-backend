@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const program = new Command();
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = `http://${process.env.API_BASE_URL}:3000/api` || 'http://localhost:3000/api';
 
 program
   .name('file-cli')

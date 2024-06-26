@@ -13,7 +13,7 @@ services:
       - "5432:5432"
 
   app:
-    build: .
+    build: ./docker/
     environment:
       - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
       - AZURE_STORAGE_ACCOUNT_NAME=${AZURE_STORAGE_ACCOUNT_NAME}
@@ -43,6 +43,14 @@ services:
       - "5050:80"
     volumes:
       - pgadmin:/var/lib/pgadmin
+  cronjobs:
+    build: ./docker/
+    volumes:
+      - .:/usr/src/app
+    entrypoint: "./docker/cron/entrypoint.sh"
+    depends_on:
+      - app
+    restart: always
 volumes:
   pgdata:
   pgadmin:
