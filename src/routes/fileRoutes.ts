@@ -28,6 +28,7 @@ router.get('/files', async (req, res) => {
     const search = req.query.search as string;
     const fromDate = req.query.fromDate as string;
     const toDate = req.query.toDate as string;
+    const project = req.query.project as string;
 
     // Build query with pagination, filtering, and search
     let query = fileRepository.createQueryBuilder('file')
@@ -52,6 +53,10 @@ router.get('/files', async (req, res) => {
       const toDateTime = new Date(toDate);
       toDateTime.setHours(23, 59, 59, 999); // Set to the end of the day
       query = query.andWhere('file.date <= :toDate', { toDate: toDateTime.toISOString() });
+    }
+
+    if (project) {
+      query = query.andWhere('project.id = :projectId', { projectId: project });
     }
 
     const totalItems = await query.getCount();
