@@ -1,7 +1,8 @@
-import { BatchServiceClient, BatchSharedKeyCredentials, OutputFileUploadCondition } from '@azure/batch';
+import { BatchServiceClient, BatchSharedKeyCredentials, EnvironmentSetting, OutputFileUploadCondition } from '@azure/batch';
 import dotenv from 'dotenv';
 import path from 'path';
 import { generateSasToken } from './azureBlobService';
+import { env } from 'process';
 
 dotenv.config();
 
@@ -21,12 +22,13 @@ const validateFiles = (files: { httpUrl: string, filePath: string }[], requiredF
   }
 };
 
-const createTask = async (taskId: string, commandLine: string, files: { httpUrl: string, filePath: string }[], outputFilePath: string) => {
+const createTask = async (taskId: string, commandLine: string, files: { httpUrl: string, filePath: string }[], outputFilePath: string, envSettings: EnvironmentSetting[] = []) => {
   const containerUrl = await generateSasToken(AZURE_STORAGE_CONTAINER_NAME, 'racwd');
   return {
     id: taskId,
     commandLine,
     resourceFiles: files,
+    environmentSettings: envSettings,
     outputFiles: [
       {
         filePattern: outputFilePath,
@@ -69,7 +71,7 @@ export const scheduleJob = async (files: { httpUrl: string, filePath: string }[]
 };
 
 export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey = null, outputFilePath = null) => {
-  const jobId = 'transcribe';
+  const jobId = 'syncaudio2';
   const taskId = `task-${Date.now()}`;
 
   validateFiles(files, ['audio', '.py']);
@@ -83,7 +85,10 @@ export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePat
 
   const outputFullPath = outputFileKey ? `${outputFilePath}/${outputFileKey}_transcription.json` : `${outputFilePath}/transcription.json`;
   const commandLine = `python3 ${pythonCommand.filePath} ${audioFile.filePath}`;
-  const task = await createTask(taskId, commandLine, files, outputFullPath);
+  const task = await createTask(taskId, commandLine, files, outputFullPath, [{
+    name: 'OPENAI_API_KEY',
+    value: process.env.OPENAI_API_KEY || '' 
+  }]);
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };

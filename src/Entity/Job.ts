@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, ColumnType } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { File } from './File';
 import { Project } from './Project';
@@ -36,7 +36,7 @@ export class Job {
   files!: File[];
 
   @ManyToOne(() => Project, (project) => project.files, { nullable: true })
-  project?: Project;
+  project?: Project | null;
 
   @Column()
   createdAt: Date;
@@ -52,5 +52,6 @@ export class Job {
     this.status = 'draft';
     this.type = 'default';
     this.data = {};
+    this.project = null;
   }
 }

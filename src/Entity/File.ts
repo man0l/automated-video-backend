@@ -1,7 +1,7 @@
-import metadata from 'reflect-metadata';
+import 'reflect-metadata';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { Project } from './Project';  // Ensure the correct import path
+import { Project } from './Project';
 
 @Entity()
 export class File {
@@ -33,7 +33,7 @@ export class File {
   locked: boolean;
 
   @ManyToOne(() => Project, (project) => project.files, { nullable: true })
-  project?: Project;
+  project?: Project | null;
 
   constructor() {
     this.id = uuidv4();
@@ -45,5 +45,6 @@ export class File {
     this.name = '';
     this.size = 0;
     this.locked = false;
+    this.project = null;
   }
 }

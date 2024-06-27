@@ -254,17 +254,21 @@ router.post('/files/transcribe', async (req, res) => {
   try {
     const fileRepository = AppDataSource.getRepository(File);
     const audioFile = await fileRepository.findOneBy({ id: fileId, type: 'audio' });
+
     if (!audioFile) {
       return res.status(400).json({ message: 'No audio files found' });
     }
 
     const resourceFiles = [];
+    const fileExtension = FileTypeGuesser.getExtension(audioFile.name);
+    let newFilePath = 'audio.';
+    newFilePath += fileExtension;
 
     resourceFiles.push({
       httpUrl: await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, audioFile.path),
-      filePath: audioFile.name
+      filePath: newFilePath
     });
-    
+
     const pythonSasUrl = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, AZURE_STORAGE_TRANSCRIBE_PYTHON_SCRIPT_PATH);
 
     resourceFiles.push({
@@ -274,12 +278,23 @@ router.post('/files/transcribe', async (req, res) => {
 
     const jobDetails = await scheduleTranscriptionJob(resourceFiles);
 
-    const job = new Job();
-    job.type = 'merge';      
-    job.files = [audioFile];
-    job.data = jobDetails.task;
-    job.status = 'processing';
-    await AppDataSource.getRepository(Job).save(job);
+    // const job = new Job();
+    // job.type = 'merge';
+    // job.files = [audioFile];  // Link the file to the job
+    // job.data = jobDetails.task;
+    // job.status = 'processing';
+    const repository = AppDataSource.getRepository(Job);
+    await repository.insert({
+      type: 'transcribe',
+      files: [audioFile],
+      data: jobDetails.task,
+      status: 'processing',
+      name: 'Transcription Job',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // await AppDataSource.getRepository(Job).save(job);
 
     res.json({ message: 'Files scheduled for transcription', jobDetails });
   } catch (error) {
