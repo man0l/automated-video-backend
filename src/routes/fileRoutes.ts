@@ -10,6 +10,7 @@ import { scheduleJob, scheduleTranscriptionJob } from '../services/azureBatchSer
 import { In } from 'typeorm/find-options/operator/In';
 import { Project } from '../Entity/Project';
 import { validate as isUUID } from 'uuid';
+import { Job } from '../Entity/Job';
 
 const router = Router();
 dotenv.config();
@@ -200,6 +201,15 @@ router.post('/merge', async (req, res) => {
       });
 
       const jobDetails = await scheduleJob(resourceFiles);
+
+      const job = new Job();
+      job.type = 'merge';      
+      job.files = files;
+      job.data = jobDetails.task;
+      job.status = 'processing';
+
+      await AppDataSource.getRepository(Job).save(job);
+
       res.json({ message: 'Files scheduled for merging', jobDetails });
   } catch (error) {
       console.error('Error merging files:', error);
@@ -263,6 +273,14 @@ router.post('/files/transcribe', async (req, res) => {
     });
 
     const jobDetails = await scheduleTranscriptionJob(resourceFiles);
+
+    const job = new Job();
+    job.type = 'merge';      
+    job.files = [audioFile];
+    job.data = jobDetails.task;
+    job.status = 'processing';
+    await AppDataSource.getRepository(Job).save(job);
+
     res.json({ message: 'Files scheduled for transcription', jobDetails });
   } catch (error) {
     console.error('Error transcribing files:', error);
