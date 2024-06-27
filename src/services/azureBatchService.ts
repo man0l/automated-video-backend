@@ -14,29 +14,18 @@ const AZURE_STORAGE_ACCOUNT_NAME = process.env.AZURE_STORAGE_ACCOUNT_NAME || 'my
 const credentials = new BatchSharedKeyCredentials(batchAccountName, batchAccountKey);
 const batchClient = new BatchServiceClient(credentials, batchAccountUrl);
 
-export const scheduleJob = async (files: { httpUrl: string, filePath: string }[]) => {
-  const jobId = 'syncaudio2';
-  const poolId = 'pool-sync-audio';
-  const taskId = `task-${Date.now()}`;
-
-  const videoFile = files.find(file => file.filePath.startsWith('video'));
-  const audioFile = files.find(file => file.filePath.startsWith('audio'));
-  const pythonCommand = files.find(file => file.filePath.endsWith('.py'));
-
-  if (!videoFile || !audioFile || !pythonCommand) {
-    throw new Error('Missing required files for the job');
+const validateFiles = (files: { httpUrl: string, filePath: string }[], requiredFileTypes: string[]) => {
+  const missingFiles = requiredFileTypes.filter(type => !files.some(file => file.filePath.startsWith(type) || file.filePath.endsWith(type)));
+  if (missingFiles.length) {
+    throw new Error(`Missing required files: ${missingFiles.join(', ')}`);
   }
+};
 
-  // Determine the output file path based on the video file extension and directory structure
-  const videoExtension = path.extname(videoFile.filePath);
-  const outputFileName = `output_video_${Date.now()}${videoExtension}`;
-  const outputFilePath = outputFileName;
-
+const createTask = async (taskId: string, commandLine: string, files: { httpUrl: string, filePath: string }[], outputFilePath: string) => {
   const containerUrl = await generateSasToken(AZURE_STORAGE_CONTAINER_NAME, 'racwd');
-
-  const task = {
+  return {
     id: taskId,
-    commandLine: `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${audioFile.filePath} ${outputFilePath}`,
+    commandLine,
     resourceFiles: files,
     outputFiles: [
       {
@@ -53,6 +42,48 @@ export const scheduleJob = async (files: { httpUrl: string, filePath: string }[]
       }
     ]
   };
+};
+
+export const scheduleJob = async (files: { httpUrl: string, filePath: string }[]) => {
+  const jobId = 'syncaudio2';
+  const taskId = `task-${Date.now()}`;
+
+  validateFiles(files, ['video', 'audio', '.py']);
+
+  const videoFile = files.find(file => file.filePath.startsWith('video'));
+  const audioFile = files.find(file => file.filePath.startsWith('audio'));
+  const pythonCommand = files.find(file => file.filePath.endsWith('.py'));
+
+  if (!videoFile || !audioFile || !pythonCommand) {
+    throw new Error('Missing required files');
+  }
+
+  const videoExtension = path.extname(videoFile.filePath);
+  const outputFilePath = `output_video_${Date.now()}${videoExtension}`;
+
+  const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${audioFile.filePath} ${outputFilePath}`;
+  const task = await createTask(taskId, commandLine, files, outputFilePath);
+
+  await batchClient.task.add(jobId, task);
+  return { jobId, taskId, task };
+};
+
+export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey = null, outputFilePath = null) => {
+  const jobId = 'transcribe';
+  const taskId = `task-${Date.now()}`;
+
+  validateFiles(files, ['audio', '.py']);
+
+  const pythonCommand = files.find(file => file.filePath.endsWith('.py'));
+  const audioFile = files.find(file => file.filePath.startsWith('audio'));
+
+  if (!audioFile || !pythonCommand) {
+    throw new Error('Missing required files');
+  }
+
+  const outputFullPath = outputFileKey ? `${outputFilePath}/${outputFileKey}_transcription.json` : `${outputFilePath}/transcription.json`;
+  const commandLine = `python3 ${pythonCommand.filePath} ${audioFile.filePath}`;
+  const task = await createTask(taskId, commandLine, files, outputFullPath);
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };

@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import * as path from 'path';
 import { FileTypeGuesser } from '../helpers/FileTypeGuesser';
 import { generateSasTokenForBlob } from '../services/azureBlobService';
-import { scheduleJob } from '../services/azureBatchService';
+import { scheduleJob, scheduleTranscriptionJob } from '../services/azureBatchService';
 import { In } from 'typeorm/find-options/operator/In';
 import { Project } from '../Entity/Project';
 import { validate as isUUID } from 'uuid';
@@ -16,6 +16,7 @@ dotenv.config();
 
 const AZURE_STORAGE_CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'azure-blob-container';
 const AZURE_STORAGE_PYTHON_SCRIPT_PATH = "sync_audio.py";
+const AZURE_STORAGE_TRANSCRIBE_PYTHON_SCRIPT_PATH = "transcribe_audio.py";
 
 router.get('/files', async (req, res) => {
   try {
@@ -234,6 +235,38 @@ router.post('/files/updateProject', async (req, res) => {
   } catch (error) {
     console.error('Error updating project:', error);
     res.status(500).send('Error updating project');
+  }
+});
+
+router.post('/files/transcribe', async (req, res) => {
+  const fileId = req.body.fileId;
+
+  try {
+    const fileRepository = AppDataSource.getRepository(File);
+    const audioFile = await fileRepository.findOneBy({ id: fileId, type: 'audio' });
+    if (!audioFile) {
+      return res.status(400).json({ message: 'No audio files found' });
+    }
+
+    const resourceFiles = [];
+
+    resourceFiles.push({
+      httpUrl: await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, audioFile.path),
+      filePath: audioFile.name
+    });
+    
+    const pythonSasUrl = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, AZURE_STORAGE_TRANSCRIBE_PYTHON_SCRIPT_PATH);
+
+    resourceFiles.push({
+      httpUrl: pythonSasUrl,
+      filePath: AZURE_STORAGE_TRANSCRIBE_PYTHON_SCRIPT_PATH
+    });
+
+    const jobDetails = await scheduleTranscriptionJob(resourceFiles);
+    res.json({ message: 'Files scheduled for transcription', jobDetails });
+  } catch (error) {
+    console.error('Error transcribing files:', error);
+    res.status(500).send('Error transcribing files');
   }
 });
 
