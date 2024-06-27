@@ -70,7 +70,7 @@ export const scheduleJob = async (files: { httpUrl: string, filePath: string }[]
   return { jobId, taskId, task };
 };
 
-export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey = null, outputFilePath = null) => {
+export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey?: string, outputFilePath?: string) => {
   const jobId = 'syncaudio2';
   const taskId = `task-${Date.now()}`;
 
@@ -85,10 +85,16 @@ export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePat
 
   const outputFullPath = outputFileKey ? `${outputFilePath}/${outputFileKey}_transcription.json` : `${outputFilePath}/transcription.json`;
   const commandLine = `python3 ${pythonCommand.filePath} ${audioFile.filePath}`;
-  const task = await createTask(taskId, commandLine, files, outputFullPath, [{
+  const task = await createTask(taskId, commandLine, files, outputFullPath, [
+    {
     name: 'OPENAI_API_KEY',
-    value: process.env.OPENAI_API_KEY || '' 
-  }]);
+    value: process.env.OPENAI_API_KEY || ''
+  },
+  {
+    name: 'OPENAI_AZURE_ENDPOINT',
+    value: process.env.OPENAI_AZURE_ENDPOINT || ''
+  }
+  ]);
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };

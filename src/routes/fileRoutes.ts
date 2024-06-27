@@ -276,13 +276,9 @@ router.post('/files/transcribe', async (req, res) => {
       filePath: AZURE_STORAGE_TRANSCRIBE_PYTHON_SCRIPT_PATH
     });
 
-    const jobDetails = await scheduleTranscriptionJob(resourceFiles);
+    const outputDir = FileTypeGuesser.getRootDirectory(audioFile.path);
 
-    // const job = new Job();
-    // job.type = 'merge';
-    // job.files = [audioFile];  // Link the file to the job
-    // job.data = jobDetails.task;
-    // job.status = 'processing';
+    const jobDetails = await scheduleTranscriptionJob(resourceFiles, audioFile.id, outputDir);
     const repository = AppDataSource.getRepository(Job);
     await repository.insert({
       type: 'transcribe',
@@ -293,8 +289,6 @@ router.post('/files/transcribe', async (req, res) => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-
-    // await AppDataSource.getRepository(Job).save(job);
 
     res.json({ message: 'Files scheduled for transcription', jobDetails });
   } catch (error) {

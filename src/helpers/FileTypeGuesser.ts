@@ -41,4 +41,9 @@ export class FileTypeGuesser {
         const extension = path.extname(fileName).slice(1).toLowerCase();
         return extension;
     }
+
+    public static getRootDirectory(filePath: string): string {
+        const parts = filePath.split('/');
+        return parts[0];
+    }
 }
