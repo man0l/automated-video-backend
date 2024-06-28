@@ -22,7 +22,14 @@ const validateFiles = (files: { httpUrl: string, filePath: string }[], requiredF
   }
 };
 
-const createTask = async (taskId: string, commandLine: string, files: { httpUrl: string, filePath: string }[], outputFilePath: string, envSettings: EnvironmentSetting[] = []) => {
+const createTask = async (
+  taskId: string, 
+  commandLine: string, 
+  files: { httpUrl: string, filePath: string }[], 
+  outputFilePath: string, 
+  envSettings: EnvironmentSetting[] = [],
+  matchingPattern = '*'
+) => {
   const containerUrl = await generateSasToken(AZURE_STORAGE_CONTAINER_NAME, 'racwd');
   return {
     id: taskId,
@@ -31,7 +38,7 @@ const createTask = async (taskId: string, commandLine: string, files: { httpUrl:
     environmentSettings: envSettings,
     outputFiles: [
       {
-        filePattern: outputFilePath,
+        filePattern: matchingPattern,
         destination: {
           container: {
             containerUrl: containerUrl,
@@ -42,7 +49,8 @@ const createTask = async (taskId: string, commandLine: string, files: { httpUrl:
           uploadCondition: 'taskSuccess' as OutputFileUploadCondition
         }
       }
-    ]
+    ],
+    deleteTaskOnCompletion: true
   };
 };
 
@@ -64,13 +72,13 @@ export const scheduleJob = async (files: { httpUrl: string, filePath: string }[]
   const outputFilePath = `output_video_${Date.now()}${videoExtension}`;
 
   const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${audioFile.filePath} ${outputFilePath}`;
-  const task = await createTask(taskId, commandLine, files, outputFilePath);
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [], outputFilePath);
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };
 };
 
-export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey?: string, outputFilePath?: string) => {
+export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey: string, outputFilePath: string) => {
   const jobId = 'syncaudio2';
   const taskId = `task-${Date.now()}`;
 
@@ -82,10 +90,9 @@ export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePat
   if (!audioFile || !pythonCommand) {
     throw new Error('Missing required files');
   }
-
-  const outputFullPath = outputFileKey ? `${outputFilePath}/${outputFileKey}_transcription.json` : `${outputFilePath}/transcription.json`;
+  
   const commandLine = `python3 ${pythonCommand.filePath} ${audioFile.filePath}`;
-  const task = await createTask(taskId, commandLine, files, outputFullPath, [
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [
     {
     name: 'OPENAI_API_KEY',
     value: process.env.OPENAI_API_KEY || ''
@@ -94,7 +101,8 @@ export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePat
     name: 'OPENAI_AZURE_ENDPOINT',
     value: process.env.OPENAI_AZURE_ENDPOINT || ''
   }
-  ]);
+  ],
+  '*.json');
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };
