@@ -16,5 +16,5 @@ wait_for_app
 while true
 do
   API_BASE_URL=app npx ts-node ./src/cli.ts sync
-  sleep 300 # 5 minutes
+  sleep 1 # 300 secs = 5 minutes
 done

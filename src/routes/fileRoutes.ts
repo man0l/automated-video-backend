@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listFilesInContainer } from '../services/azureBlobService';
+import { deleteMissingFilesFromDatabase, listFilesInContainer } from '../services/azureBlobService';
 import { AppDataSource } from '../dataSource';
 import { File } from '../Entity/File';
 import dotenv from 'dotenv';
@@ -111,7 +111,13 @@ router.post('/sync', async (req, res) => {
     const fileEntities = [];
     const projectEntities = [];
 
+    // Track paths of files from the blob storage
+    const blobPaths = new Set(blobItems.map(blob => blob.name));
+
     for (const blob of blobItems) {
+      if (blob.name.endsWith('py')) {
+        continue;
+      }
       const blobPath = blob.name;
       const url = `https://${process.env.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER_NAME}/${blobPath}`;
       const date = new Date().toISOString();
@@ -152,7 +158,9 @@ router.post('/sync', async (req, res) => {
       await fileRepository.save(fileEntities);
     }
 
-    res.json({ message: 'Sync complete', files: fileEntities, projects: projectEntities });
+    const filesToDelete = await deleteMissingFilesFromDatabase(blobPaths);
+
+    res.json({ message: 'Sync complete', addedFiles: fileEntities, deletedFiles: filesToDelete, projects: projectEntities });
   } catch (error) {
     console.error('Error syncing files:', error);
     res.status(500).send('Error syncing files');

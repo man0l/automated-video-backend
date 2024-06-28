@@ -1,5 +1,7 @@
 import { BlobItem, BlobServiceClient, ContainerSASPermissions, StorageSharedKeyCredential } from '@azure/storage-blob';
 import dotenv from 'dotenv';
+import { AppDataSource } from '../dataSource';
+import { File } from '../Entity/File';
 
 dotenv.config();
 
@@ -48,3 +50,37 @@ export const generateSasTokenForBlob = (containerName: string, blobName: string,
 
   return sasToken;
 }
+
+export const deleteMissingFilesFromDatabase = async (blobPaths: Set<string>) => {
+  const fileRepository = AppDataSource.getRepository(File);
+  const batchSize = 100;
+  let pageIndex = 0;
+  let filesToDelete: File[] = [];
+
+  while (true) {
+    const [files, totalFiles] = await fileRepository.findAndCount({
+      skip: pageIndex * batchSize,
+      take: batchSize,
+    });
+
+    if (files.length === 0) {
+      break;
+    }
+
+    const filesInBatchToDelete = files.filter(file => !blobPaths.has(file.path));
+    
+    filesToDelete = filesToDelete.concat(filesInBatchToDelete);
+
+    if (filesInBatchToDelete.length > 0) {
+      await fileRepository.remove(filesInBatchToDelete);
+    }
+
+    pageIndex++;
+
+    if (pageIndex * batchSize >= totalFiles) {
+      break;
+    }
+  }
+
+  return filesToDelete;
+};
