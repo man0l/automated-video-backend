@@ -34,6 +34,11 @@ export class FileTypeGuesser {
 
     public static guessType(fileName: string): string {
         const extension = this.getExtension(fileName);
+
+        if (fileName.endsWith('json') && fileName.includes('transcription')) {
+            return 'transcript';
+        }
+
         return this.extensionToTypeMap[extension] || 'unknown';
     }
 
