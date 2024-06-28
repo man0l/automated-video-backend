@@ -89,4 +89,24 @@ program
       }
     }
   });
+
+program
+  .command('delete-completed-tasks <jobId>')
+  .description('Delete completed tasks for a job')
+  .action(async (jobId: string) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/delete-completed-tasks/${jobId}`);
+      console.log(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Error deleting completed tasks:', error.message);
+      } else {
+        console.error('Unexpected error:', error);
+      }
+    }
+  }
+);
+  
 program.parse(process.argv);
+
+ 

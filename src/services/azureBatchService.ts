@@ -1,4 +1,4 @@
-import { BatchServiceClient, BatchSharedKeyCredentials, EnvironmentSetting, OutputFileUploadCondition } from '@azure/batch';
+import { BatchServiceClient, BatchSharedKeyCredentials, CloudTask, EnvironmentSetting, OutputFileUploadCondition } from '@azure/batch';
 import dotenv from 'dotenv';
 import path from 'path';
 import { generateSasToken } from './azureBlobService';
@@ -106,4 +106,24 @@ export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePat
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };
+};
+
+export const deleteCompletedTasks = async (jobId: string | undefined) => {
+  if (!jobId) {
+    throw new Error("jobId is required and must be a string");
+  }
+  
+  const tasks = await batchClient.task.list(jobId);
+  
+  if (!tasks || !Array.isArray(tasks)) {
+    throw new Error("Failed to retrieve tasks or tasks is not an array");
+  }
+
+  const completedTasks = tasks.filter((task: CloudTask) => task.state === 'completed');
+  
+  if (!completedTasks.length) {
+    return;
+  }
+  
+  await Promise.all(completedTasks.map(task => batchClient.task.deleteMethod(jobId, task.id ?? '')));
 };

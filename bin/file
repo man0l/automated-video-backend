@@ -13,6 +13,7 @@ usage() {
   echo "  delete <id>                  Delete a file by ID"
   echo "  sync                         Sync files from Azure Blob Storage to the database"
   echo "  sas                          Generate a SAS token for an Azure Blob Storage container"
+  echo " delete-completed-tasks <jobId>  Delete all completed tasks"
 }
 
 # Ensure at least one argument is provided
@@ -48,6 +49,13 @@ case "$COMMAND" in
     ;;
   sas)
     npx ts-node "$CLI_PATH" sas
+    ;;
+  delete-completed-tasks)
+    if [ "$#" -ne 1 ]; then
+      usage
+      exit 1
+    fi
+    npx ts-node "$CLI_PATH" delete-completed-tasks "$@"
     ;;
   *)
     usage
