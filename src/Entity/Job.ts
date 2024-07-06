@@ -32,9 +32,6 @@ export class Job {
   })
   data: object;
 
-  @OneToMany(() => File, (file) => file.project, { nullable: true })
-  files!: File[];
-
   @ManyToOne(() => Project, (project) => project.files, { nullable: true })
   project?: Project | null;
 

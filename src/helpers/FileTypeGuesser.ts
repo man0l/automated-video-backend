@@ -1,4 +1,5 @@
 import path from 'path';
+import { validate as isUUID } from 'uuid';
 
 export class FileTypeGuesser {
     private static readonly extensionToTypeMap: { [key: string]: string } = {
@@ -38,6 +39,11 @@ export class FileTypeGuesser {
         if (fileName.endsWith('json') && fileName.includes('transcription')) {
             return 'transcript';
         }
+
+        if (fileName.endsWith('json')) {            
+            return 'transcript';
+        }
+
 
         return this.extensionToTypeMap[extension] || 'unknown';
     }

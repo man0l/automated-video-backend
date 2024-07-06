@@ -106,6 +106,22 @@ program
     }
   }
 );
+
+program
+  .command('download-transcriptions')
+  .description('Download transcriptions')
+  .action(async () => {
+    try {      
+      const response = await axios.post(`${API_BASE_URL}/azure/download-transcriptions`);
+      console.log(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Error downloading transcriptions:', error.message);
+      }
+    }
+  }
+);
+
   
 program.parse(process.argv);
 

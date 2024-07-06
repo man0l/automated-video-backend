@@ -108,6 +108,52 @@ export const scheduleTranscriptionJob = async (files: { httpUrl: string, filePat
   return { jobId, taskId, task };
 };
 
+export const scheduleSpeechServiceJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey: string, outputFilePath: string) => {
+  const jobId = 'syncaudio2';
+  const taskId = `task-${Date.now()}`;
+
+  validateFiles(files, ['audio', '.py']);
+
+  const pythonCommand = files.find(file => file.filePath.endsWith('.py'));
+  const audioFile = files.find(file => file.filePath.startsWith('audio'));
+
+  if (!audioFile || !pythonCommand) {
+    throw new Error('Missing required files');
+  }
+
+  const commandLine = `python3 ${pythonCommand.filePath} ${audioFile.filePath}`;
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [
+    {
+      name: 'AZURE_SPEECH_SERVICE_API_KEY',
+      value: process.env.AZURE_SPEECH_SERVICE_API_KEY || ''
+    },
+    {
+      name: 'AZURE_SPEECH_SERVICE_REGION',
+      value: process.env.AZURE_SPEECH_SERVICE_REGION || ''
+    },
+    {
+      name: 'LOCALE',
+      value: process.env.LOCALE || ''
+    },
+    {
+      name: 'AZURE_STORAGE_CONNECTION_STRING',
+      value: process.env.AZURE_STORAGE_CONNECTION_STRING || ''
+    },
+    {
+      name: 'AZURE_STORAGE_CONTAINER_NAME',
+      value: process.env.AZURE_STORAGE_CONTAINER_NAME || ''
+    },
+    {
+      name: 'AZURE_STORAGE_ACCOUNT_NAME',
+      value: process.env.AZURE_STORAGE_ACCOUNT_NAME || ''
+    }
+  ],
+  '*.wav');
+
+  await batchClient.task.add(jobId, task);
+  return { jobId, taskId, task };
+}
+
 export const deleteCompletedTasks = async (jobId: string | undefined) => {
   if (!jobId) {
     throw new Error("jobId is required and must be a string");

@@ -212,7 +212,6 @@ router.post('/merge', async (req, res) => {
 
       const job = new Job();
       job.type = 'merge';      
-      job.files = files;
       job.data = jobDetails.task;
       job.status = 'processing';
 
@@ -290,7 +289,6 @@ router.post('/files/transcribe', async (req, res) => {
     const repository = AppDataSource.getRepository(Job);
     await repository.insert({
       type: 'transcribe',
-      files: [audioFile],
       data: jobDetails.task,
       status: 'processing',
       name: 'Transcription Job',

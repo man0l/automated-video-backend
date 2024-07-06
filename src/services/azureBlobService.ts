@@ -51,6 +51,14 @@ export const generateSasTokenForBlob = (containerName: string, blobName: string,
   return sasToken;
 }
 
+export const uploadFileToBlob = async (containerName: string, filePath: string, blobName: string) => {
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blobClient = containerClient.getBlockBlobClient(blobName);
+
+  const uploadBlobResponse = await blobClient.uploadFile(filePath);
+  return uploadBlobResponse;
+}
+
 export const deleteMissingFilesFromDatabase = async (blobPaths: Set<string>) => {
   const fileRepository = AppDataSource.getRepository(File);
   const batchSize = 100;
