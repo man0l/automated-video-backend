@@ -26,8 +26,8 @@ export class File {
   @Column()
   path: string;
 
-  @Column({ nullable: true })
-  size?: number;
+  @Column({ type: 'bigint', nullable: true })
+  size?: bigint;
 
   @Column({ default: false })
   locked: boolean;
@@ -43,7 +43,7 @@ export class File {
     this.type = 'unknown';
     this.url = '';
     this.name = '';
-    this.size = 0;
+    this.size = BigInt(0);
     this.locked = false;
     this.project = null;
   }

@@ -173,3 +173,42 @@ export const deleteCompletedTasks = async (jobId: string | undefined) => {
   
   await Promise.all(completedTasks.map(task => batchClient.task.deleteMethod(jobId, task.id ?? '')));
 };
+
+export const scheduleVideoEditingJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey: string, outputFilePath: string) => {
+  const jobId = 'syncaudio2';
+  const taskId = `task-${Date.now()}`;
+
+  validateFiles(files, ['video', '.py']);
+
+  const pythonCommand = files.find(file => file.filePath.endsWith('.py'));
+  const videoFile = files.find(file => file.filePath.startsWith('video'));
+
+  if (!videoFile || !pythonCommand) {
+    throw new Error('Missing required files');
+  }
+
+  const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${outputFileKey}`;
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [], '*.mp4');
+
+  const result = await batchClient.task.add(jobId, task);
+  return { jobId, taskId, task, result };
+}
+
+export const scheduleThumbnailExtractionJob = async (files: { httpUrl: string, filePath: string }[], outputFilePath: string) => {
+  const jobId = 'syncaudio2';
+  const taskId = `task-${Date.now()}`;
+
+  validateFiles(files, ['video']);
+
+  const videoFile = files.find(file => file.filePath.startsWith('video'));
+
+  if (!videoFile) {
+    throw new Error('Missing required video file');
+  }
+
+  const commandLine = `ffmpeg -i ${videoFile.filePath} -ss 00:00:10 -vframes 1 ${outputFilePath}`;
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [], '*.jpg');
+
+  await batchClient.task.add(jobId, task);
+  return { jobId, taskId, task };
+};

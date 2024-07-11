@@ -8,6 +8,8 @@ import projectRoutes from './routes/projectRoutes';
 import dotenv from 'dotenv';
 import { AbortController } from 'abort-controller';
 import cors from 'cors';
+import { Request, Response, NextFunction } from 'express';
+
 
 (global as any).AbortController = AbortController;
 
@@ -19,6 +21,20 @@ AppDataSource.initialize().then(async () => {
 
   app.use(bodyParser.json());
   app.use(cors());
+
+  const jsonReplacer = (key: any, value: any) => {
+    key;
+    return typeof value === 'bigint' ? value.toString() : value; 
+  };
+  
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const originalJson = res.json;
+    res.json = function (data: any) {
+        const jsonResponse = JSON.stringify(data, jsonReplacer);
+        return originalJson.call(this, JSON.parse(jsonResponse));
+    };
+    next();
+  });
 
   const apiRouter = Router();
   apiRouter.use(fileRoutes);

@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import * as path from 'path';
 import { FileTypeGuesser } from '../helpers/FileTypeGuesser';
 import { generateSasTokenForBlob } from '../services/azureBlobService';
-import { scheduleJob, scheduleTranscriptionJob } from '../services/azureBatchService';
+import { scheduleJob, scheduleThumbnailExtractionJob, scheduleTranscriptionJob } from '../services/azureBatchService';
 import { In } from 'typeorm/find-options/operator/In';
 import { Project } from '../Entity/Project';
 import { validate as isUUID } from 'uuid';
@@ -101,7 +101,6 @@ router.get('/files/:id', async (req, res) => {
 });
 
 // Sync files from Azure Blob Storage to the database
-// Sync files from Azure Blob Storage to the database
 router.post('/sync', async (req, res) => {
   try {
     const fileRepository = AppDataSource.getRepository(File);
@@ -141,15 +140,35 @@ router.post('/sync', async (req, res) => {
       }
 
       // Check if the file already exists in the database
-      const existingFile = await fileRepository.findOneBy({ path: blobPath });
+      let existingFile = await fileRepository.findOneBy({ path: blobPath });
+
+      // Check if incoming file is a thumbnail
+      if (path.basename(blobPath).startsWith('thumbnail_') && blobPath.endsWith('.jpg')) {
+        const fileId = path.basename(blobPath).replace('thumbnail_', '').replace('.jpg', '');
+        existingFile = await fileRepository.findOneBy({ id: fileId });
+        if (existingFile) {
+          existingFile.thumbnail = url;
+          await fileRepository.save(existingFile);
+        }
+        continue;
+      }
+      
       if (!existingFile) {
         const file = new File();
         file.name = path.basename(blobPath); // Extract file name from the path
         file.url = url;
         file.path = blobPath;
-        file.size = blob.properties.contentLength;
+        file.size = BigInt(blob.properties.contentLength ?? 0);
         file.type = FileTypeGuesser.guessType(file.name);
         file.project = project || undefined; // Associate the file with the project
+
+        // Schedule thumbnail generation if the file is a video and doesn't have a thumbnail
+        if (file.type === 'video' && !file.thumbnail) {
+          const thumbnailFileName = `thumbnail_${file.id}.jpg`;
+          const thumbnailOutputPath = path.join(path.dirname(blobPath), thumbnailFileName);
+          await scheduleThumbnailExtractionJob([{ httpUrl: url, filePath: blobPath }], thumbnailOutputPath);
+        }
+        
         fileEntities.push(file);
       }
     }
@@ -159,8 +178,13 @@ router.post('/sync', async (req, res) => {
     }
 
     const filesToDelete = await deleteMissingFilesFromDatabase(blobPaths);
-
-    res.json({ message: 'Sync complete', addedFiles: fileEntities, deletedFiles: filesToDelete, projects: projectEntities });
+    res.json({ 
+        message: 'Sync complete', 
+        addedFiles: fileEntities, 
+        deletedFiles: filesToDelete, 
+        projects: projectEntities 
+      }
+    );
   } catch (error) {
     console.error('Error syncing files:', error);
     res.status(500).send('Error syncing files');

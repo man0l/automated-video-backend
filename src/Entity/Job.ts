@@ -21,10 +21,10 @@ export class Job {
 
   @Column({
     type: 'enum',
-    enum: ['transcribe', 'merge', 'default'],
+    enum: ['transcribe', 'merge', 'default', 'video_edit'],
     default: 'default'
   })
-  type: 'transcribe' | 'merge' | 'default';
+  type: 'transcribe' | 'merge' | 'default' | 'video_edit';
 
   @Column({
     type: 'json',
