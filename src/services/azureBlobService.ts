@@ -31,8 +31,8 @@ export const generateSasToken = (containerName: string, permissions: string = 'r
 
   const sasToken = containerClient.generateSasUrl({
     permissions: ContainerSASPermissions.parse(permissions),
-    startsOn: new Date(new Date().valueOf() - 86400),
-    expiresOn: new Date(new Date().valueOf() + 86400)
+    startsOn: new Date(new Date().valueOf() - 86400 * 1000),
+    expiresOn: new Date(new Date().valueOf() + 86400 * 1000)
   });
 
   return sasToken;
