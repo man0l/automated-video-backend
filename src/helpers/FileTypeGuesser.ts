@@ -25,6 +25,7 @@ export class FileTypeGuesser {
         'mp3': 'audio',
         'wav': 'audio',
         'ogg': 'audio',
+        'm4a': 'audio',
         'pdf': 'document',
         'doc': 'document',
         'docx': 'document',
