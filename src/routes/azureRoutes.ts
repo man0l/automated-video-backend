@@ -343,7 +343,7 @@ router.post('/azure/compress-video', async (req, res) => {
   
       resourceFiles.push({
         httpUrl: pythonSasUrl,
-        filePath: AZURE_STORAGE_GENERATE_SUBTITLES_PYTHON_SCRIPT_PATH
+        filePath: AZURE_STORAGE_TRANSCRIBE_PYTHON_SCRIPT_PATH
       });
   
       const outputDir = FileTypeGuesser.getRootDirectory(audioFile.path);
