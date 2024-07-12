@@ -16,8 +16,8 @@ wait_for_app
 while true
 do
   API_BASE_URL=app npx ts-node ./src/cli.ts sync
-  #API_BASE_URL=app npx ts-node ./src/cli.ts delete-completed-tasks syncaudio2
+  API_BASE_URL=app npx ts-node ./src/cli.ts delete-completed-tasks syncaudio2
   API_BASE_URL=app npx ts-node ./src/cli.ts download-transcriptions
-  sleep 1 # 300 secs = 5 minutes
+  sleep 300 # 300 secs = 5 minutes
 done
 
