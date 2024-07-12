@@ -54,7 +54,7 @@ const createTask = async (
   };
 };
 
-export const scheduleJob = async (files: { httpUrl: string, filePath: string }[]) => {
+export const scheduleMergeAudioJob = async (files: { httpUrl: string, filePath: string }[]) => {
   const jobId = 'syncaudio2';
   const taskId = `task-${Date.now()}`;
 
@@ -211,4 +211,71 @@ export const scheduleThumbnailExtractionJob = async (files: { httpUrl: string, f
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };
+};
+
+export const scheduleCompressionJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey: string, outputFilePath: string) => {
+  const jobId = 'syncaudio2';
+  const taskId = `task-${Date.now()}`;
+
+  validateFiles(files, ['compressed_video_']);
+  const videoFile = files.find(file => file.filePath.startsWith('compressed_video'));
+
+  if (!videoFile) {
+    throw new Error('Missing required files');
+  }
+
+  const ext = path.extname(videoFile.filePath);
+  const wildcard = `*${path.extname(videoFile.filePath)}`;
+
+  const commandLine = `ffmpeg -i ${videoFile.filePath} -vf "scale=1080:1920" -c:v libx264 -crf 18 -preset medium -c:a copy compressed_${outputFileKey}${ext} -y`
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [], wildcard);
+
+  const result = await batchClient.task.add(jobId, task);
+  return { jobId, taskId, task, result };
+};
+
+export const scheduleTrimVideoJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey: string, outputFilePath: string) => {
+  const jobId = 'syncaudio2';
+  const taskId = `task-${Date.now()}`;
+
+  validateFiles(files, ['trimmed_video_', '.py']);
+
+  const pythonCommand = files.find(file => file.filePath.endsWith('.py'));
+  const videoFile = files.find(file => file.filePath.startsWith('trimmed_video_'));
+
+  if (!videoFile || !pythonCommand) {
+    throw new Error('Missing required files');
+  }
+
+  const noiseThreshold = -30;
+  const durationThreshold = 0.5;
+  const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${noiseThreshold} ${durationThreshold} ${outputFileKey}`;
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [], '*.mp4');
+
+  const result = await batchClient.task.add(jobId, task);
+  return { jobId, taskId, task, result };
+};
+
+export const scheduleGenerateSubtitlesJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey: string, outputFilePath: string) => {
+  return scheduleSpeechServiceJob(files, outputFileKey, outputFilePath);
+};
+
+export const scheduleAddSubtitlesJob = async (files: { httpUrl: string, filePath: string }[], outputFileKey: string, outputFilePath: string) => {
+  const jobId = 'syncaudio2';
+  const taskId = `task-${Date.now()}`;
+
+  validateFiles(files, ['video', '.py']);
+
+  const pythonCommand = files.find(file => file.filePath.endsWith('.py'));
+  const videoFile = files.find(file => file.filePath.startsWith('video'));
+
+  if (!videoFile || !pythonCommand) {
+    throw new Error('Missing required files');
+  }
+
+  const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${outputFileKey}`;
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [], '*.mp4');
+
+  const result = await batchClient.task.add(jobId, task);
+  return { jobId, taskId, task, result };
 };

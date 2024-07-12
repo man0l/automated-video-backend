@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import * as path from 'path';
 import { FileTypeGuesser } from '../helpers/FileTypeGuesser';
 import { generateSasTokenForBlob } from '../services/azureBlobService';
-import { scheduleJob, scheduleThumbnailExtractionJob, scheduleTranscriptionJob } from '../services/azureBatchService';
+import { scheduleMergeAudioJob, scheduleThumbnailExtractionJob, scheduleTranscriptionJob } from '../services/azureBatchService';
 import { In } from 'typeorm/find-options/operator/In';
 import { Project } from '../Entity/Project';
 import { validate as isUUID } from 'uuid';
@@ -232,7 +232,7 @@ router.post('/merge', async (req, res) => {
         filePath: AZURE_STORAGE_PYTHON_SCRIPT_PATH
       });
 
-      const jobDetails = await scheduleJob(resourceFiles);
+      const jobDetails = await scheduleMergeAudioJob(resourceFiles);
 
       const job = new Job();
       job.type = 'merge';      

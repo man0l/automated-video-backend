@@ -21,10 +21,10 @@ export class Job {
 
   @Column({
     type: 'enum',
-    enum: ['transcribe', 'merge', 'default', 'video_edit'],
-    default: 'default'
+    enum: ['transcribe', 'merge', 'compress', 'trim', 'generate_subtitles', 'add_subtitles', 'video_edit'],
+    nullable: true
   })
-  type: 'transcribe' | 'merge' | 'default' | 'video_edit';
+  type: 'transcribe' | 'merge' | 'compress' | 'trim' | 'generate_subtitles' | 'add_subtitles' | 'video_edit' | null;
 
   @Column({
     type: 'json',
@@ -47,7 +47,7 @@ export class Job {
     this.createdAt = new Date();
     this.updatedAt = new Date();    
     this.status = 'draft';
-    this.type = 'default';
+    this.type = null;
     this.data = {};
     this.project = null;
   }
