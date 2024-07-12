@@ -17,7 +17,7 @@ dotenv.config();
 const AZURE_STORAGE_CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'azure-blob-container';
 const AZURE_STORAGE_TRANSCRIBE_PYTHON_SCRIPT_PATH = "transcribe_speech_service.py";
 const AZURE_STORAGE_VIDEO_EDITING_PYTHON_SCRIPT_PATH = "video_editing.py";
-const AZURE_STORAGE_MERGE_AUDIO_PYTHON_SCRIPT_PATH = "merge_audio.py";
+const AZURE_STORAGE_MERGE_AUDIO_PYTHON_SCRIPT_PATH = "sync_audio.py";
 const AZURE_STORAGE_TRIM_VIDEO_PYTHON_SCRIPT_PATH = "trim_video.py";
 const AZURE_STORAGE_GENERATE_SUBTITLES_PYTHON_SCRIPT_PATH = "generate_subtitles.py";
 const AZURE_STORAGE_ADD_SUBTITLES_PYTHON_SCRIPT_PATH = "add_subtitles.py";
