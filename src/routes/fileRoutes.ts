@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { deleteMissingFilesFromDatabase, listFilesInContainer } from '../services/azureBlobService';
+import { deleteMissingFilesFromDatabase, generateSasToken, listFilesInContainer } from '../services/azureBlobService';
 import { AppDataSource } from '../dataSource';
 import { File } from '../Entity/File';
 import dotenv from 'dotenv';
@@ -107,8 +107,8 @@ router.post('/sync', async (req, res) => {
     const projectRepository = AppDataSource.getRepository(Project);
     const blobItems = await listFilesInContainer(AZURE_STORAGE_CONTAINER_NAME);
 
-    const fileEntities = [];
-    const projectEntities = [];
+    const fileEntities: File[] = [];
+    const projectEntities: Project[] = [];
 
     // Track paths of files from the blob storage
     const blobPaths = new Set(blobItems.map(blob => blob.name));
@@ -163,10 +163,11 @@ router.post('/sync', async (req, res) => {
         file.project = project || undefined; // Associate the file with the project
 
         // Schedule thumbnail generation if the file is a video and doesn't have a thumbnail
-        if (file.type === 'video' && !file.thumbnail) {
-          const thumbnailFileName = `thumbnail_${file.id}.jpg`;
-          const thumbnailOutputPath = path.join(path.dirname(blobPath), thumbnailFileName);
-          await scheduleThumbnailExtractionJob([{ httpUrl: url, filePath: blobPath }], thumbnailOutputPath);
+        if (file.type === 'video') {
+          const outputDir = FileTypeGuesser.getRootDirectory(file.path);
+
+          const httpUrl = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, file.path);
+          await scheduleThumbnailExtractionJob([{ httpUrl, filePath: file.name }], outputDir);
         }
         
         fileEntities.push(file);

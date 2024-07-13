@@ -16,7 +16,15 @@ const credentials = new BatchSharedKeyCredentials(batchAccountName, batchAccount
 const batchClient = new BatchServiceClient(credentials, batchAccountUrl);
 
 const validateFiles = (files: { httpUrl: string, filePath: string }[], requiredFileTypes: string[]) => {
-  const missingFiles = requiredFileTypes.filter(type => !files.some(file => file.filePath.startsWith(type) || file.filePath.endsWith(type)));
+  const missingFiles = requiredFileTypes
+                          .filter(
+                            type => 
+                              !files.some(
+                                  file => file.filePath.startsWith(type) ||
+                                  file.filePath.endsWith(type) ||
+                                  file.filePath.includes(type)
+                              )
+                          );
   if (missingFiles.length) {
     throw new Error(`Missing required files: ${missingFiles.join(', ')}`);
   }
@@ -198,15 +206,18 @@ export const scheduleThumbnailExtractionJob = async (files: { httpUrl: string, f
   const jobId = 'syncaudio2';
   const taskId = `task-${Date.now()}`;
 
-  validateFiles(files, ['video']);
+  validateFiles(files, ['compressed']);
 
-  const videoFile = files.find(file => file.filePath.startsWith('video'));
+  const videoFile = files.find(file => file.filePath.startsWith('compressed'));
 
   if (!videoFile) {
     throw new Error('Missing required video file');
   }
 
-  const commandLine = `ffmpeg -i ${videoFile.filePath} -ss 00:00:10 -vframes 1 ${outputFilePath}`;
+  const ext = path.extname(videoFile.filePath);
+  const jpegPath = "thumbnail_" + videoFile.filePath.replace(ext, '.jpg');
+
+  const commandLine = `ffmpeg -i ${videoFile.filePath} -ss 00:00:10 -vframes 1 ${jpegPath}`;
   const task = await createTask(taskId, commandLine, files, outputFilePath, [], '*.jpg');
 
   await batchClient.task.add(jobId, task);
