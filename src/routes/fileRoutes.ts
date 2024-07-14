@@ -71,6 +71,7 @@ router.get('/files', async (req, res) => {
     const filesWithSasUrl = await Promise.all(
       files.map(async (file) => {
         file.url = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, file.path);
+        file.thumbnail = file.thumbnail ? await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, file.thumbnail) : undefined;
         return file;
       })
     );
@@ -148,7 +149,7 @@ router.post('/sync', async (req, res) => {
 
         if (project) {
           // Update all files with the same project ID to have the same thumbnail
-          await fileRepository.update({ project: { id: project.id } }, { thumbnail: url });
+          await fileRepository.update({ project: { id: project.id } }, { thumbnail: blobPath });
         }
       
         continue;
