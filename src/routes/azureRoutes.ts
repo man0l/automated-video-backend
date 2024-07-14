@@ -252,7 +252,7 @@ router.post('/azure/compress-video', async (req, res) => {
   
       const outputDir = FileTypeGuesser.getRootDirectory(videoFile.path);
   
-      const jobDetails = await scheduleMergeAudioJob(resourceFiles);
+      const jobDetails = await scheduleMergeAudioJob(resourceFiles, outputDir);
       const repository = AppDataSource.getRepository(Job);
       await repository.insert({
         type: 'merge',

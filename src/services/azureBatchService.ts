@@ -62,7 +62,7 @@ const createTask = async (
   };
 };
 
-export const scheduleMergeAudioJob = async (files: { httpUrl: string, filePath: string }[]) => {
+export const scheduleMergeAudioJob = async (files: { httpUrl: string, filePath: string }[], outputFilePath: string) => {
   const jobId = 'syncaudio2';
   const taskId = `task-${Date.now()}`;
 
@@ -77,10 +77,10 @@ export const scheduleMergeAudioJob = async (files: { httpUrl: string, filePath: 
   }
 
   const videoExtension = path.extname(videoFile.filePath);
-  const outputFilePath = `output_video_${Date.now()}${videoExtension}`;
+  const filePath = `output_video_${Date.now()}${videoExtension}`;
 
   const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${audioFile.filePath} ${outputFilePath}`;
-  const task = await createTask(taskId, commandLine, files, outputFilePath, [], outputFilePath);
+  const task = await createTask(taskId, commandLine, files, filePath, [], outputFilePath);
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };

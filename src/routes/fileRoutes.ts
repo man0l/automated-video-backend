@@ -236,7 +236,8 @@ router.post('/merge', async (req, res) => {
         filePath: AZURE_STORAGE_PYTHON_SCRIPT_PATH
       });
 
-      const jobDetails = await scheduleMergeAudioJob(resourceFiles);
+      const outputFilePath = FileTypeGuesser.getRootDirectory(files[0].path);
+      const jobDetails = await scheduleMergeAudioJob(resourceFiles, outputFilePath);
 
       const job = new Job();
       job.type = 'merge';      
