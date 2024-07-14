@@ -144,12 +144,13 @@ router.post('/sync', async (req, res) => {
 
       // Check if incoming file is a thumbnail
       if (path.basename(blobPath).startsWith('thumbnail_') && blobPath.endsWith('.jpg')) {
-        const fileId = path.basename(blobPath).replace('thumbnail_', '').replace('.jpg', '');
-        existingFile = await fileRepository.findOneBy({ id: fileId });
-        if (existingFile) {
-          existingFile.thumbnail = url;
-          await fileRepository.save(existingFile);
+        const project = await projectRepository.findOneBy({ name: baseDirectory });
+
+        if (project) {
+          // Update all files with the same project ID to have the same thumbnail
+          await fileRepository.update({ project: { id: project.id } }, { thumbnail: url });
         }
+      
         continue;
       }
       
@@ -167,6 +168,7 @@ router.post('/sync', async (req, res) => {
           const outputDir = FileTypeGuesser.getRootDirectory(file.path);
 
           const httpUrl = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, file.path);
+          const filePath = ''
           await scheduleThumbnailExtractionJob([{ httpUrl, filePath: file.name }], outputDir);
         }
         
