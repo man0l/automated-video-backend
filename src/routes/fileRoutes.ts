@@ -165,7 +165,7 @@ router.post('/sync', async (req, res) => {
         file.project = project || undefined; // Associate the file with the project
 
         // Schedule thumbnail generation if the file is a video and doesn't have a thumbnail
-        if (file.type === 'video') {
+        if (file.type === 'video' && file.name.startsWith('compressed_')) {
           const outputDir = FileTypeGuesser.getRootDirectory(file.path);
 
           const httpUrl = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, file.path);

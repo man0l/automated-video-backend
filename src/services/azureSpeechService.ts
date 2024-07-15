@@ -7,6 +7,7 @@ import { AppDataSource } from '../dataSource';
 import { Job } from '../Entity/Job';
 import { File } from '../Entity/File';
 import { Project } from '../Entity/Project';
+import { validate as isUUID } from 'uuid';
 
 
 dotenv.config();
@@ -83,21 +84,26 @@ export const downloadTranscription = async (transcriptionId: string, files: Tran
     const contentUrl = transcription.links.contentUrl;
     const json = await axios.get(contentUrl, { headers });
     let fileName = extractFileNameFromURL(json.data.source);
+    
+    fileName = fileName.split('prepared_video_').pop() || fileName;
 
-    fileName = fileName.split('prepared_audio_').pop() || fileName;
-    const audioFileID = fileName = fileName.split('.').shift() || fileName;
+    const videoFileId = fileName = fileName.split('.').shift() || fileName;
     fileName = `${fileName}.json`;
+
+    if (!isUUID(videoFileId)) {
+        return '';
+    }
 
     const fileRepository = AppDataSource.getRepository(File);
     const file = await fileRepository.findOne({
         where: {
-            id: audioFileID
+            id: videoFileId
         },
         relations: ['project']
     });
     
     if (!file || !file.project) {
-        throw new Error('File not found: ' + audioFileID);
+        throw new Error('File not found: ' + videoFileId);
     }
 
     // upload the transcripption json file to the proper directory by using the project name as a directory
@@ -133,9 +139,10 @@ export const handleTranscriptions = async (status: string = 'Succeeded') => {
             try {
                 // List the files in the transcription
                 const files = await listFilesInTranscription(transcriptionId);
-                const downloadedFile = await downloadTranscription(transcriptionId, files);                
+                const downloadedFile = await downloadTranscription(transcriptionId, files);    
+                console.log(downloadedFile);            
                 // Optionally delete the transcription job after processing
-                await deleteTranscription(transcriptionId);
+                //await deleteTranscription(transcriptionId);
             } catch (error: any) {
                 console.error(`Failed to process transcription ${transcriptionId}: ${error.message}`);
             }

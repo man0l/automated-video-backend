@@ -44,8 +44,8 @@ export const generateSasTokenForBlob = (containerName: string, blobName: string,
 
   const sasToken = blobClient.generateSasUrl({
     permissions: ContainerSASPermissions.parse(permissions),
-    startsOn: new Date(new Date().valueOf() - 86400),
-    expiresOn: new Date(new Date().valueOf() + 86400)
+    startsOn: new Date(new Date().valueOf() - 86400 * 1000),
+    expiresOn: new Date(new Date().valueOf() + 86400 * 1000)
   });
 
   return sasToken;

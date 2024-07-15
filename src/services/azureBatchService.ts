@@ -36,15 +36,20 @@ const createTask = async (
   files: { httpUrl: string, filePath: string }[], 
   outputFilePath: string, 
   envSettings: EnvironmentSetting[] = [],
-  matchingPattern = '*'
+  matchingPattern?: string
 ) => {
   const containerUrl = await generateSasToken(AZURE_STORAGE_CONTAINER_NAME, 'racwd');
-  return {
+
+  const taskConfig: any = {
     id: taskId,
     commandLine,
     resourceFiles: files,
     environmentSettings: envSettings,
-    outputFiles: [
+    deleteTaskOnCompletion: true
+  };
+
+  if (matchingPattern) {
+    taskConfig.outputFiles = [
       {
         filePattern: matchingPattern,
         destination: {
@@ -57,10 +62,12 @@ const createTask = async (
           uploadCondition: 'taskSuccess' as OutputFileUploadCondition
         }
       }
-    ],
-    deleteTaskOnCompletion: true
-  };
+    ];
+  }
+
+  return taskConfig;
 };
+
 
 export const scheduleMergeAudioJob = async (files: { httpUrl: string, filePath: string }[], outputFilePath: string) => {
   const jobId = 'syncaudio2';
@@ -79,8 +86,8 @@ export const scheduleMergeAudioJob = async (files: { httpUrl: string, filePath: 
   const videoExtension = path.extname(videoFile.filePath);
   const filePath = `output_video_${Date.now()}${videoExtension}`;
 
-  const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${audioFile.filePath} ${outputFilePath}`;
-  const task = await createTask(taskId, commandLine, files, filePath, [], outputFilePath);
+  const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${audioFile.filePath} ${filePath}`;
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [], 'output_video*');
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };
@@ -120,16 +127,16 @@ export const scheduleSpeechServiceJob = async (files: { httpUrl: string, filePat
   const jobId = 'syncaudio2';
   const taskId = `task-${Date.now()}`;
 
-  validateFiles(files, ['audio', '.py']);
+  validateFiles(files, ['video', '.py']);
 
   const pythonCommand = files.find(file => file.filePath.endsWith('.py'));
-  const audioFile = files.find(file => file.filePath.startsWith('audio'));
+  const videoFile = files.find(file => file.filePath.startsWith('video'));
 
-  if (!audioFile || !pythonCommand) {
+  if (!videoFile || !pythonCommand) {
     throw new Error('Missing required files');
   }
 
-  const commandLine = `python3 ${pythonCommand.filePath} ${audioFile.filePath}`;
+  const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath}`;
   const task = await createTask(taskId, commandLine, files, outputFilePath, [
     {
       name: 'AZURE_SPEECH_SERVICE_API_KEY',
@@ -156,7 +163,8 @@ export const scheduleSpeechServiceJob = async (files: { httpUrl: string, filePat
       value: process.env.AZURE_STORAGE_ACCOUNT_NAME || ''
     }
   ],
-  '*.wav');
+  undefined
+);
 
   await batchClient.task.add(jobId, task);
   return { jobId, taskId, task };
@@ -228,18 +236,18 @@ export const scheduleCompressionJob = async (files: { httpUrl: string, filePath:
   const jobId = 'syncaudio2';
   const taskId = `task-${Date.now()}`;
 
-  validateFiles(files, ['compressed_video_']);
-  const videoFile = files.find(file => file.filePath.startsWith('compressed_video'));
+  validateFiles(files, ['for_compression']);
+  const videoFile = files.find(file => file.filePath.startsWith('for_compression'));
 
   if (!videoFile) {
     throw new Error('Missing required files');
   }
 
   const ext = path.extname(videoFile.filePath);
-  const wildcard = `*${path.extname(videoFile.filePath)}`;
+  const outputFile = `compressed_${outputFileKey}${ext}`;
 
-  const commandLine = `ffmpeg -i ${videoFile.filePath} -vf "scale=1080:1920" -c:v libx264 -crf 18 -preset medium -c:a copy compressed_${outputFileKey}${ext} -y`
-  const task = await createTask(taskId, commandLine, files, outputFilePath, [], wildcard);
+  const commandLine = `ffmpeg -i ${videoFile.filePath} -vf "scale=1080:1920" -c:v libx264 -crf 18 -preset medium -c:a copy ${outputFile} -y`
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [], outputFile);
 
   const result = await batchClient.task.add(jobId, task);
   return { jobId, taskId, task, result };
@@ -261,7 +269,7 @@ export const scheduleTrimVideoJob = async (files: { httpUrl: string, filePath: s
   const noiseThreshold = -30;
   const durationThreshold = 0.5;
   const commandLine = `python3 ${pythonCommand.filePath} ${videoFile.filePath} ${noiseThreshold} ${durationThreshold} ${outputFileKey}`;
-  const task = await createTask(taskId, commandLine, files, outputFilePath, [], '*.mp4');
+  const task = await createTask(taskId, commandLine, files, outputFilePath, [], 'non_silent_*');
 
   const result = await batchClient.task.add(jobId, task);
   return { jobId, taskId, task, result };

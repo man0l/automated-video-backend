@@ -190,7 +190,7 @@ router.post('/azure/compress-video', async (req, res) => {
   
       const resourceFiles = [];
       const fileExtension = FileTypeGuesser.getExtension(videoFile.name);
-      const newFilePath = `compressed_video_${videoFile.id}.${fileExtension}`;
+      const newFilePath = `for_compression_video_${videoFile.id}.${fileExtension}`;
   
       resourceFiles.push({
         httpUrl: await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, videoFile.path),
@@ -324,18 +324,18 @@ router.post('/azure/compress-video', async (req, res) => {
   
     try {
       const fileRepository = AppDataSource.getRepository(File);
-      const audioFile = await fileRepository.findOneBy({ id: fileId, type: 'audio' });
+      const videoFile = await fileRepository.findOneBy({ id: fileId, type: 'video' });
   
-      if (!audioFile) {
-        return res.status(400).json({ message: 'No audio file found' });
+      if (!videoFile) {
+        return res.status(400).json({ message: 'No video file found' });
       }
   
       const resourceFiles = [];
-      const fileExtension = FileTypeGuesser.getExtension(audioFile.name);
-      const newFilePath = `audio_${audioFile.id}.${fileExtension}`;
+      const fileExtension = FileTypeGuesser.getExtension(videoFile.name);
+      const newFilePath = `video_${videoFile.id}.${fileExtension}`;
   
       resourceFiles.push({
-        httpUrl: await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, audioFile.path),
+        httpUrl: await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, videoFile.path),
         filePath: newFilePath
       });
   
@@ -346,21 +346,21 @@ router.post('/azure/compress-video', async (req, res) => {
         filePath: AZURE_STORAGE_TRANSCRIBE_PYTHON_SCRIPT_PATH
       });
   
-      const outputDir = FileTypeGuesser.getRootDirectory(audioFile.path);
+      const outputDir = FileTypeGuesser.getRootDirectory(videoFile.path);
   
-      const jobDetails = await scheduleGenerateSubtitlesJob(resourceFiles, audioFile.id, outputDir);
+      const jobDetails = await scheduleGenerateSubtitlesJob(resourceFiles, videoFile.id, outputDir);
       const repository = AppDataSource.getRepository(Job);
       await repository.insert({
         type: 'generate_subtitles',
         data: jobDetails.task,
-        project: audioFile?.project,
+        project: videoFile?.project,
         status: 'processing',
         name: 'Generate Subtitles Azure Batch Job',
         createdAt: new Date(),
         updatedAt: new Date(),
       });
   
-      res.json({ message: 'Audio file scheduled for subtitle generation', jobDetails });
+      res.json({ message: 'Video file scheduled for subtitle generation', jobDetails });
     } catch (error) {
       console.error('Error scheduling subtitle generation job:', error);
       res.status(500).send('Error scheduling subtitle generation job');
