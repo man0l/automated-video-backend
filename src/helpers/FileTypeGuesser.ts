@@ -7,7 +7,7 @@ export class FileTypeGuesser {
         'md': 'text',
         'html': 'text',
         'htm': 'text',
-        'json': 'text',
+        'json': 'transcript',
         'csv': 'text',
         'xml': 'text',
         'js': 'text',
@@ -31,20 +31,13 @@ export class FileTypeGuesser {
         'docx': 'document',
         'xls': 'document',
         'xlsx': 'document',
+        'ass': 'transcript',
+        'srt': 'transcript'
         // Add more mappings as needed
     };
 
     public static guessType(fileName: string): string {
         const extension = this.getExtension(fileName);
-
-        if (fileName.endsWith('json') && fileName.includes('transcription')) {
-            return 'transcript';
-        }
-
-        if (fileName.endsWith('json')) {            
-            return 'transcript';
-        }
-
 
         return this.extensionToTypeMap[extension] || 'unknown';
     }

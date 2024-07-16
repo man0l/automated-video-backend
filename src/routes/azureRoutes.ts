@@ -10,6 +10,7 @@ import { File } from '../Entity/File';
 import { Job } from '../Entity/Job';
 import { generateSasTokenForBlob } from '../services/azureBlobService';
 import { handleTranscriptions } from '../services/azureSpeechService';
+import { basename } from 'path';
 
 const router = Router();
 dotenv.config();
@@ -19,8 +20,8 @@ const AZURE_STORAGE_TRANSCRIBE_PYTHON_SCRIPT_PATH = "transcribe_speech_service.p
 const AZURE_STORAGE_VIDEO_EDITING_PYTHON_SCRIPT_PATH = "video_editing.py";
 const AZURE_STORAGE_MERGE_AUDIO_PYTHON_SCRIPT_PATH = "sync_audio.py";
 const AZURE_STORAGE_TRIM_VIDEO_PYTHON_SCRIPT_PATH = "trim_video.py";
-const AZURE_STORAGE_GENERATE_SUBTITLES_PYTHON_SCRIPT_PATH = "generate_subtitles.py";
 const AZURE_STORAGE_ADD_SUBTITLES_PYTHON_SCRIPT_PATH = "add_subtitles.py";
+const AZURE_STORAGE_ADD_SUBTITLES_FONT_PATH = "Montserrat-SemiBold.ttf";
 
 
 router.get('/sas', async (req, res) => {
@@ -130,7 +131,7 @@ router.post('/azure/schedule-video-editing-job', async (req, res) => {
         if (videoFile.project) {
             const transcriptionFile = await fileRepository.findOne({
                 where: { project: videoFile.project, type: 'transcript' },
-                order: { date: 'DESC' },
+               order: { date: 'DESC' },
             });
 
             if (transcriptionFile) {
@@ -138,7 +139,7 @@ router.post('/azure/schedule-video-editing-job', async (req, res) => {
                     httpUrl: await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, transcriptionFile.path),
                     filePath: transcriptionFile.name
                 });
-            }
+            } 
         }
 
         const fileExtension = FileTypeGuesser.getExtension(videoFile.name);
@@ -369,22 +370,38 @@ router.post('/azure/compress-video', async (req, res) => {
   
   router.post('/azure/add-subtitles', async (req, res) => {
     const fileId = req.body.fileId;
-  
+    const resourceFiles = [];
+
     try {
       const fileRepository = AppDataSource.getRepository(File);
-      const videoFile = await fileRepository.findOneBy({ id: fileId, type: 'video' });
+      const videoFile = await fileRepository.findOne({
+        where: { id: fileId, type: 'video' },
+        relations: ['project'],
+    });
   
       if (!videoFile) {
         return res.status(400).json({ message: 'No video file found' });
       }
-  
-      const resourceFiles = [];
+
+      if (!videoFile.project) {
+        return res.status(400).json({ message: 'No project found for video file' });
+      }
+
+      const transcriptionFile = await fileRepository.findOne({
+        where: { project: videoFile.project, type: 'transcript' },
+        order: { date: 'DESC' },
+      });
+
+      if (!transcriptionFile) {
+        return res.status(400).json({ message: 'No transcription file found' });
+      }      
+    
       const fileExtension = FileTypeGuesser.getExtension(videoFile.name);
       const newFilePath = `video_with_subtitles_${videoFile.id}.${fileExtension}`;
   
       resourceFiles.push({
         httpUrl: await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, videoFile.path),
-        filePath: newFilePath
+        filePath: basename(videoFile.path)
       });
   
       const pythonSasUrl = await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, AZURE_STORAGE_ADD_SUBTITLES_PYTHON_SCRIPT_PATH);
@@ -394,9 +411,19 @@ router.post('/azure/compress-video', async (req, res) => {
         filePath: AZURE_STORAGE_ADD_SUBTITLES_PYTHON_SCRIPT_PATH
       });
   
+      resourceFiles.push({
+        httpUrl: await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, AZURE_STORAGE_ADD_SUBTITLES_FONT_PATH),
+        filePath: "fonts/" + AZURE_STORAGE_ADD_SUBTITLES_FONT_PATH
+      });
+  
+      resourceFiles.push({
+        httpUrl: await generateSasTokenForBlob(AZURE_STORAGE_CONTAINER_NAME, transcriptionFile.path),
+        filePath: basename(transcriptionFile.path)
+      });
+  
       const outputDir = FileTypeGuesser.getRootDirectory(videoFile.path);
   
-      const jobDetails = await scheduleAddSubtitlesJob(resourceFiles, videoFile.id, outputDir);
+      const jobDetails = await scheduleAddSubtitlesJob(resourceFiles, newFilePath, outputDir);
       const repository = AppDataSource.getRepository(Job);
       await repository.insert({
         type: 'add_subtitles',
@@ -413,7 +440,6 @@ router.post('/azure/compress-video', async (req, res) => {
       console.error('Error scheduling add subtitles job:', error);
       res.status(500).send('Error scheduling add subtitles job');
     }
-  });
-  
+  });  
 
 export default router;

@@ -92,3 +92,11 @@ export const deleteMissingFilesFromDatabase = async (blobPaths: Set<string>) => 
 
   return filesToDelete;
 };
+
+export const deleteFileFromBlob = async (containerName: string, blobName: string) => {
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blobClient = containerClient.getBlockBlobClient(blobName);
+
+  const deleteResponse = await blobClient.delete();
+  return deleteResponse;
+}

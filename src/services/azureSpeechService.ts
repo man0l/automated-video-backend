@@ -8,7 +8,7 @@ import { Job } from '../Entity/Job';
 import { File } from '../Entity/File';
 import { Project } from '../Entity/Project';
 import { validate as isUUID } from 'uuid';
-
+import { deleteFileFromBlob } from './azureBlobService';
 
 dotenv.config();
 
@@ -84,6 +84,7 @@ export const downloadTranscription = async (transcriptionId: string, files: Tran
     const contentUrl = transcription.links.contentUrl;
     const json = await axios.get(contentUrl, { headers });
     let fileName = extractFileNameFromURL(json.data.source);
+    let originalFileName = fileName;
     
     fileName = fileName.split('prepared_video_').pop() || fileName;
 
@@ -109,6 +110,7 @@ export const downloadTranscription = async (transcriptionId: string, files: Tran
     // upload the transcripption json file to the proper directory by using the project name as a directory
     await saveTranscriptionToFile(contentUrl, path.join(__dirname, `../../data/${fileName}`));
     await uploadFileToBlob(AZURE_STORAGE_CONTAINER_NAME, path.join(__dirname, `../../data/${fileName}`), `${file.project.name}/${fileName}`);
+    await deleteFileFromBlob(AZURE_STORAGE_CONTAINER_NAME, originalFileName);
     // after successfully uploaded, mark the job as completed 
 
     return `${file.project.name}/${fileName}`;
@@ -139,10 +141,9 @@ export const handleTranscriptions = async (status: string = 'Succeeded') => {
             try {
                 // List the files in the transcription
                 const files = await listFilesInTranscription(transcriptionId);
-                const downloadedFile = await downloadTranscription(transcriptionId, files);    
-                console.log(downloadedFile);            
+                const downloadedFile = await downloadTranscription(transcriptionId, files);                
                 // Optionally delete the transcription job after processing
-                //await deleteTranscription(transcriptionId);
+                await deleteTranscription(transcriptionId);
             } catch (error: any) {
                 console.error(`Failed to process transcription ${transcriptionId}: ${error.message}`);
             }
@@ -163,3 +164,7 @@ const saveTranscriptionToFile = async (contentUrl: string, filePath: string) => 
     const fileResponse = await axios.get(contentUrl);
     fs.writeFileSync(filePath, JSON.stringify(fileResponse.data, null, 2));
 }
+function deleteBlobFile(AZURE_STORAGE_CONTAINER_NAME: string, arg1: string) {
+    throw new Error('Function not implemented.');
+}
+
