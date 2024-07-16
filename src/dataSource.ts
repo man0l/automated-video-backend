@@ -3,6 +3,8 @@ import { File } from './Entity/File';
 import dotenv from 'dotenv';
 import { Project } from './Entity/Project';
 import { Job } from './Entity/Job'; 
+import { Template } from './Entity/Template';  // Add this line
+import { Scenario } from './Entity/Scenario';  // Add this line
 
 dotenv.config();
 
@@ -17,7 +19,7 @@ export const AppDataSource = new DataSource({
   database: process.env.TYPEORM_DATABASE || 'your-database',
   synchronize: true,
   logging: false,
-  entities: [File, Project, Job],
+  entities: [File, Project, Job, Template, Scenario],
   migrations: [],
   subscribers: [],
 });

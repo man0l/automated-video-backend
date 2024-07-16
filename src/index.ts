@@ -5,6 +5,8 @@ import bodyParser from 'body-parser';
 import fileRoutes from './routes/fileRoutes';
 import azureRoutes from './routes/azureRoutes';
 import projectRoutes from './routes/projectRoutes';
+import templateRoutes from './routes/templateRoutes';
+import scenarioRoutes from './routes/scenarioRoutes';
 import dotenv from 'dotenv';
 import { AbortController } from 'abort-controller';
 import cors from 'cors';
@@ -40,6 +42,8 @@ AppDataSource.initialize().then(async () => {
   apiRouter.use(fileRoutes);
   apiRouter.use(azureRoutes);
   apiRouter.use(projectRoutes);
+  apiRouter.use(templateRoutes);
+  apiRouter.use(scenarioRoutes);
 
   app.use('/api', apiRouter);
 
