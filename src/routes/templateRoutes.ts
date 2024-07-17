@@ -5,16 +5,41 @@ import { Template } from '../Entity/Template';
 const router = Router();
 const templateRepository = AppDataSource.getRepository(Template);
 
-// Get all templates
+const parseQueryParam = (param: any, type: string = 'string') => {
+  if (!param) return undefined;
+  if (type === 'number') return Number(param);
+  if (type === 'string') return String(param);
+  return param;
+};
+
+// Get all templates with pagination, filtering, and sorting
 router.get('/templates', async (req, res) => {
   try {
-    const templates = await templateRepository.find();
-    res.json(templates);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    const page = parseQueryParam(req.query.page, 'number') || 1;
+    const itemsPerPage = parseQueryParam(req.query.itemsPerPage, 'number') || 10;
+    const search = parseQueryParam(req.query.search);
+    const sort = parseQueryParam(req.query.sort).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    // Build query with pagination, filtering, and search
+    let query = templateRepository.createQueryBuilder('template')
+      .leftJoinAndSelect('template.scenarios', 'scenarios')
+      .loadRelationCountAndMap('template.scenarioCount', 'template.scenarios')
+      .skip((page - 1) * itemsPerPage)
+      .take(itemsPerPage)
+      .orderBy('template.createdAt', sort);
+
+    if (search) {
+      query = query.andWhere('template.title LIKE :search OR template.content LIKE :search', { search: `%${search}%` });
+    }
+
+    const [templates, totalItems] = await query.getManyAndCount();
+
+    res.json({ templates, totalItems });
+  } catch (error) {
+    console.error('Error fetching templates from the database:', error);
+    res.status(500).send('Error fetching templates from the database');
   }
 });
-
 // Get a single template by ID
 router.get('/templates/:id', async (req, res) => {
   try {

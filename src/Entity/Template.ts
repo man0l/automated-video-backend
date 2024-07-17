@@ -16,9 +16,17 @@ export class Template {
   @OneToMany(() => Scenario, (scenario) => scenario.template, { nullable: true })
   scenarios?: Scenario[] | null;
 
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  updatedAt: Date;
+
   constructor() {
     this.id = uuidv4();
     this.title = '';
     this.content = '';
+    this.createdAt = new Date();
+    this.updatedAt = new Date();
   }
 }

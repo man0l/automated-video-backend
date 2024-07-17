@@ -22,6 +22,12 @@ export class Scenario {
   @Column('simple-array')
   tags: string[];
 
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  updatedAt: Date;
+
   @ManyToOne(() => Template, (template) => template.scenarios, { nullable: true })
   template?: Template | null;
 
@@ -32,5 +38,7 @@ export class Scenario {
     this.content = '';
     this.status = 'draft';
     this.tags = [];
+    this.createdAt = new Date();
+    this.updatedAt = new Date();
   }
 }
